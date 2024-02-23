@@ -5,14 +5,14 @@ import ch.uzh.ifi.hase.soprafs24.entity.User;
 import ch.uzh.ifi.hase.soprafs24.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,7 +30,6 @@ public class UserService {
 
   private final UserRepository userRepository;
 
-  @Autowired
   public UserService(@Qualifier("userRepository") UserRepository userRepository) {
     this.userRepository = userRepository;
   }
@@ -40,9 +39,10 @@ public class UserService {
   }
 
   public User createUser(User newUser) {
-    newUser.setToken(UUID.randomUUID().toString());
-    newUser.setStatus(UserStatus.OFFLINE);
     checkIfUserExists(newUser);
+    newUser.setToken(UUID.randomUUID().toString());
+    newUser.setStatus(UserStatus.ONLINE);
+    newUser.setRegisterDate(new Date());
     // saves the given entity but data is only persisted in the database once
     // flush() is called
     newUser = userRepository.save(newUser);
@@ -62,18 +62,76 @@ public class UserService {
    * @throws org.springframework.web.server.ResponseStatusException
    * @see User
    */
-  private void checkIfUserExists(User userToBeCreated) {
+
+  void checkIfUserExists(User userToBeCreated) {
     User userByUsername = userRepository.findByUsername(userToBeCreated.getUsername());
-    User userByName = userRepository.findByName(userToBeCreated.getName());
 
     String baseErrorMessage = "The %s provided %s not unique. Therefore, the user could not be created!";
-    if (userByUsername != null && userByName != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-          String.format(baseErrorMessage, "username and the name", "are"));
-    } else if (userByUsername != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "username", "is"));
-    } else if (userByName != null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, String.format(baseErrorMessage, "name", "is"));
+    if (userByUsername != null && userToBeCreated.getId()!= userByUsername.getId()) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                String.format(baseErrorMessage, "username", "is"));
     }
+}
+
+  public User loginUser(User user) {
+    user = checkIfPasswordWrong(user);
+    user.setStatus(UserStatus.ONLINE);
+    user.setToken(UUID.randomUUID().toString());
+
+    return user;
+  }
+
+  User checkIfPasswordWrong(User userToBeLoggedIn) {
+
+    User userByUsername = userRepository.findByUsername(userToBeLoggedIn.getUsername());
+
+    if (userByUsername == null) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Username not exist!");
+    }
+    else if (!userByUsername.getPassword().equals(userToBeLoggedIn.getPassword())) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Password incorrect!");
+    }
+    else {
+        return userByUsername;
+    }
+  }
+
+  //Define the logout function to set the status to OFFLINE when log out
+  public User logoutUser(User userToBeLoggedOut) {
+    User userByUsername = userRepository.getOne(userToBeLoggedOut.getId());
+    userByUsername.setStatus(UserStatus.OFFLINE);
+    return userByUsername;
+  }
+
+  public User userProfileById(Long id) {
+    Optional<User> userByUserid = userRepository.findById(id);
+    if (userByUserid.isPresent()) {
+      return userByUserid.get();
+  }
+  else {
+  throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User with this ID:"+id+" not found!");
+  }
+  }
+
+  public void userEditProfile(User user) {
+    if(!userRepository.existsById(user.getId())) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user ID was not found");
+      }
+    User userByUserid = userRepository.getOne(user.getId());
+
+    if(user.getUsername()!=null){
+          checkIfUserExists(user);
+          userByUserid.setUsername(user.getUsername());
+          };
+    // set the birthday
+    if(user.getBirthday()!=null){
+          userByUserid.setBirthday(user.getBirthday());
+          };
+        
+      
+    // saves the given entity but data is only persisted in the database once
+    // flush() is called
+    userRepository.flush();
+    // return userByUserid;
   }
 }

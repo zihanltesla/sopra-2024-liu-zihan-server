@@ -3,7 +3,12 @@ package ch.uzh.ifi.hase.soprafs24.entity;
 import ch.uzh.ifi.hase.soprafs24.constant.UserStatus;
 
 import javax.persistence.*;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.io.Serializable;
+import java.time.LocalDate;
+import java.util.Date;
 
 /**
  * Internal User Representation
@@ -25,7 +30,7 @@ public class User implements Serializable {
   @GeneratedValue
   private Long id;
 
-  @Column(nullable = false)
+  @Column(nullable = true)
   private String name;
 
   @Column(nullable = false, unique = true)
@@ -37,12 +42,23 @@ public class User implements Serializable {
   @Column(nullable = false)
   private UserStatus status;
 
+  @Column(nullable = false)
+  private String password;
+
+  @JsonFormat(pattern="dd-MM-yyyy")
+  @Column
+  private Date registerdate;;
+  
+  @JsonFormat(pattern="dd-MM-yyyy")
+  @Column(nullable = true)
+  private Date birthday;
+
   public Long getId() {
     return id;
   }
 
-  public void setId(Long id) {
-    this.id = id;
+  public void setId(long l) {
+    this.id = l;
   }
 
   public String getName() {
@@ -76,4 +92,39 @@ public class User implements Serializable {
   public void setStatus(UserStatus status) {
     this.status = status;
   }
+
+  public String getPassword() {
+    return password;
+}
+
+  public void setPassword(String password) {
+    this.password = password;
+}
+
+public Date getRegisterDate() {
+  return registerdate;
+}
+
+public void setRegisterDate(Date registerdate) {
+  this.registerdate = registerdate;
+}
+
+public Date getBirthday() {
+  return birthday;
+}
+
+public void setBirthday(Date birthday) {
+  this.birthday = birthday;
+}
+
+public void setBirthday(LocalDate of) {
+}
+
+public Object getLastUpdated() {
+    return null;
+}
+
+public boolean isPresent() {
+    return false;
+}
 }
